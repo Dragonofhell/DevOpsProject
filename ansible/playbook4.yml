@@ -1,0 +1,182 @@
+---
+- name: copy Install FAM
+  hosts: all
+  become: yes
+  become_method: 'sudo'
+
+
+  # vars_prompt:
+  #   - name: vault_password
+  #     promt: "Enter vault password"
+  #     private: yes
+
+###СПИСОК ПЕРЕМЕННЫХ . 
+  vars:
+    source_file: /tmp/idp/
+    destin_file: /opt/idp
+    source_dir: /tmp/idp
+    dest_dir: /opt/idp
+    message1: Hello
+    message2: World
+    secret: Aqfg6ssfWGHNS
+    ansible_python_interpreter: "/usr/bin/python"
+    pkg_mgr: "{{ansible_pkg_mgr}}"
+    server_name: "{{ansible_hostname}}"
+  tasks:
+    - name: Check PKG manager # Собираем данные о сервере
+      debug: 
+        var: pkg_mgr
+    - set_fact: full_message="Your IP is {{ansible_ssh_host}} . Your hostname is {{ansible_hostname}}. Package manager is {{ansible_pkg_mgr}}. Python path is {{ansible_python}}"
+
+    - debug:
+        var: full_message #Выводим сообщение о сервере
+
+    - name:  Uptime
+      shell: uptime
+      register: resultsuptime
+      
+    - debug:
+        var: resultsuptime
+
+
+    - name: Make dir for IDP
+      file:
+        path: "{{ dest_dir }}"
+        state: directory
+      become: yes
+
+
+    - block: #BLOCK FOR YUM#
+      - block:
+          - name: Show Server name
+            debug:
+             var: server_name
+
+          - name: Install Java(1).   Add repo #Секция для установки Jenkins
+            shell: wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo --no-check-certificate && rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+       
+          - name: Install Java(2). Install packages # Установка пакетов
+            yum:
+              name:
+                - fontconfig
+                - java-11-openjdk
+                - jenkins
+              state: latest
+            async: 1000
+            poll: 0
+            register: yum_progress
+
+          - name: Вывести процесс установки в режиме реального времени 
+            async_status:
+              jid: "{{ yum_progress.ansible_job_id }}"
+            register: yum_result
+            until: yum_result.finished
+            retries: 50
+          - name: Enable Jenkins Service
+            service: name=jenkins state=started enabled=yes
+        when: server_name == "linuxm"
+
+      - block:
+          - name: Show Server name
+            debug:
+             var: server_name
+
+
+          - name: Check and Install wget
+            yum: name=wget state=latest
+
+          - name: Install Java(1).   Add repo #Секция для установки Jenkins
+            shell: wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo --no-check-certificate && rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+       
+          - name: Install Java(2). Install packages # Установка пакетов
+            yum:
+              name:
+                - fontconfig
+                - java-11-openjdk                
+              state: latest
+            async: 1000
+            poll: 0
+            register: yum_progress
+
+          - name: Вывести процесс установки в режиме реального времени 
+            async_status:
+              jid: "{{ yum_progress.ansible_job_id }}"
+            register: yum_result
+            until: yum_result.finished
+            retries: 50
+          - name: Enable Jenkins Service
+            service: name=jenkins state=started enabled=yes
+
+          - name: Delete Jenkins if possible
+            yum: name=jenkins state=absent
+        when: (server_name == "ip-172-31-16-168" or server_name == "linux1")
+
+
+      #- name: Install Nginx via yum
+      #  yum: name=nginx state=latest
+      #  #####Тут могут быть другие команды, необходимые при условии, что pkg_mgr = yum
+     #
+      #- name: Start and Enable Nginx Service
+      #  service: name=nginx state=started enabled=yes
+      #when: pkg_mgr == "yum"
+
+    - #block: #BLOCK FOR APT
+      #- name: Install Nginx via apt
+      #  apt: name=nginx state=latest
+      #- name: Start and Enable Nginx Service
+      #  service: name=nginx state=started enabled=yes 
+     #
+      #when: pkg_mgr == "apt"
+
+    - #block: #COPY IDP Files
+      #- name: Copy Files to Folder IDP (txt)
+      #  copy:
+      #    src: "{{item}}"
+      #    dest: "{{ dest_dir }}"
+      #    mode: 0775
+      #  #loop: 
+      #  #  - "1.sql"
+      #  #  - "2.sql"
+      #  #  - "testfile.txt"
+      #  with_fileglob: "{{source_dir}}/*.txt"
+      #  notify:
+      #    - Restart nginx yum
+      #    - Restart nginx apt
+
+      #- name: Copy Files to Folder IDP (sql)
+      #  copy:
+      #    src: "{{item}}"
+      #    dest: "{{ dest_dir }}"
+      #    mode: 0775
+      #  #loop: 
+      #  #  - "1.sql"
+      #  #  - "2.sql"
+      #  #  - "testfile.txt"
+      #  with_fileglob: "{{source_dir}}/*.sql"
+      #  notify:
+      #    - Restart nginx yum
+      #    - Restart nginx apt
+  
+
+    
+
+    # - name: Download FAM Latest
+    #   include_vars:
+    #     file: /home/avanpost/ansible/vault.yml
+    #     name: vault_vars
+    #   vars:
+    #     ansible_vault_password: "{{ vault_password }}"
+
+
+  handlers:
+   - name: Restart nginx yum
+     service: name=nginx state=restarted
+     when: pkg_mgr == "yum"
+
+   - name : Restart nginx apt
+     service: name=nginx state=restarted
+     when: pkg_mgr == "apt"
+  
+  
+    
+    
