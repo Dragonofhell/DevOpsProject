@@ -98,17 +98,17 @@
             poll: 0
             register: yum_progress
 
-          - name: Вывести процесс установки в режиме реального времени 
+          - name: Wait untill finished 
             async_status:
               jid: "{{ yum_progress.ansible_job_id }}"
             register: yum_result
             until: yum_result.finished
             retries: 50
-          - name: Enable Jenkins Service
-            service: name=jenkins state=started enabled=yes
+          #- name: Enable Jenkins Service
+          #  service: name=jenkins state=started enabled=yes
 
-          - name: Delete Jenkins if possible
-            yum: name=jenkins state=absent
+          #- name: Delete Jenkins if possible
+          #  yum: name=jenkins state=absent
         when: (server_name == "ip-172-31-16-168" or server_name == "linux1")
 
 
