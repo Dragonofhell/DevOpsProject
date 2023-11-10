@@ -5,7 +5,7 @@ from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from bs4 import BeautifulSoup
 import time
 from datetime import datetime
-import pandas as pd # for Excel export
+import pandas as pd  # for Excel export
 from urllib.parse import urlparse
 import os
 
@@ -14,20 +14,22 @@ s = Service(driver_path)
 options = FirefoxOptions()
 driver = webdriver.Firefox(service=s, options=options)
 
+
 def fetch_data(url):
     page_counter = 1
     items_data = []
-    while True: # Loop through each page
-        if page_counter == 1:
+    while True:  # Loop through each page
+        if page_counter == 3:
             current_url = url
         else:
-            if 'filter' in url: # check if 'filter' is in the url
-                current_url = url.split('#')[0] + f'/page-{page_counter}/' + '#' + url.split('#')[1]  # add 'page-X/' before '#'
+            if 'filter' in url:  # check if 'filter' is in the url
+                current_url = url.split('#')[0] + f'/page-{page_counter}/' + '#' + url.split('#')[
+                    1]  # add 'page-X/' before '#'
             else:
                 current_url = url + f'/page-{page_counter}/'
 
         driver.get(current_url)
-        time.sleep(5)
+        time.sleep(3)
         soup = BeautifulSoup(driver.page_source, 'html.parser')
 
         items = soup.find_all('div', class_="item-block")
@@ -56,14 +58,20 @@ def fetch_data(url):
                 items_data.append({"Название": name, "Цена": price,
                                    "Бонусы": bonus_percent, "Количество": bonus_amount,
                                    "Реальная цена": price - bonus_amount,
-                                   "Ссылка":'https://megamarket.ru/'+link_market})
+                                   "Ссылка": 'https://megamarket.ru' + link_market})
             except Exception as e:
-                print ("Error Data")
+                print("Error Data")
+                similar_button = item.find('div', class_='out-of-stock__footer')
+                # print(similar_button.get_text(strip=True))
+                if similar_button and 'Похожие' in similar_button.get_text(strip=True):
+                    print('Обнаружен товар, которого нет в наличии. Завершение работы.')
+                    return items_data
         page_counter += 1
     return items_data
 
+
 url = "https://megamarket.ru/catalog/vstraivaemye-posudomoechnye-mashiny-45-sm/brand-gorenje/"
-#fetch_data(url)
+# fetch_data(url)
 data = fetch_data(url)
 
 # Закрываем веб-драйвер после использования
@@ -75,10 +83,9 @@ path_parts = parsed_url.path.strip("/").split("/")
 # Берем нужные из них: 'catalog' и 'televizory'
 needed_parts = path_parts[0:2]
 # Соединяем их через '-', добавляем дату и формат файла
-date_string=datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
-filename = "-".join(needed_parts) + date_string+".xlsx"
+date_string = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
+filename = "-".join(needed_parts) + date_string + ".xlsx"
 
 df = pd.DataFrame(data)
 
 df.to_excel(filename, index=False)
-
