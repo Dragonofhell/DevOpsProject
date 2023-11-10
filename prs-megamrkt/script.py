@@ -1,16 +1,13 @@
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from bs4 import BeautifulSoup
 import time
 from datetime import datetime
 import pandas as pd  # for Excel export
 from urllib.parse import urlparse
-import openpyxl
 from openpyxl.styles import Font
-from openpyxl.drawing.image import Image
-import os
+
 
 driver_path = r'E:\\geckodriver.exe'
 s = Service(driver_path)
@@ -102,5 +99,3 @@ with pd.ExcelWriter(filename, engine='openpyxl') as writer:
         cell = sheet.cell(row=i, column=len(df.columns))
         cell.value = '=HYPERLINK("%s", "%s")' % (link, link)
         cell.font = Font(color="0563C1", underline="single")
-
-
