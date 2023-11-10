@@ -3,13 +3,13 @@
 в формате: -- Наименование -- Цена -- Процент кешбека -- Количество баллов 
 -- Реальная цена ( Цена - кешбек) -- Ссылка на товар
 # Необходимые библиотеки Python
--- selenium
--- bs4 
--- BeautifulSoup 
--- time 
--- datetime 
--- pandas 
--- urllib.parse
+selenium
+ bs4 
+ BeautifulSoup 
+ time 
+ datetime 
+ pandas 
+ urllib.parse
 
 # Заметки
 ## 1.0.0
