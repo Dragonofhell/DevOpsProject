@@ -19,7 +19,7 @@ def fetch_data(url):
     page_counter = 1
     items_data = []
     while True:  # Loop through each page
-        if page_counter == 3:
+        if page_counter == 1:
             current_url = url
         else:
             if 'filter' in url:  # check if 'filter' is in the url
