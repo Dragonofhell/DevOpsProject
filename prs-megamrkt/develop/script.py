@@ -7,13 +7,49 @@ from datetime import datetime
 import pandas as pd  # for Excel export
 from urllib.parse import urlparse
 from openpyxl.styles import Font
+import json
+from random import randint
 
+
+#Список агентов
+user_agents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
+    # добавьте больше вариантов User-Agents в этот список
+]
 
 driver_path = r'E:\\geckodriver.exe'
 s = Service(driver_path)
+user_agent = user_agents[randint(0, len(user_agents)-1)]
 options = FirefoxOptions()
+
+#Запуск браузера
 driver = webdriver.Firefox(service=s, options=options)
 
+url = input("Введите ссылку на страницу: ")
+options.add_argument(f'user-agent={user_agent}')
+
+# Загружаем куки
+def load_cookies(driver, location, url=None):
+    with open(location, 'r') as cookiesfile:
+        cookies = json.load(cookiesfile)
+        if url is not None:
+            driver.get(url)
+        for cookie in cookies:
+            driver.add_cookie(cookie)
+
+# Сохраняем куки
+def save_cookies(driver, location):
+    with open(location, 'w') as file:
+        cookies = driver.get_cookies()
+        json.dump(cookies, file)
+
+try:  # Пытаемся загрузить куки
+    load_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt', url)
+except:  # Если не удалось загрузить, мы открываем сайт и сохраняем куки
+    driver.get(url)
+    save_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt')
 
 def fetch_links(url):
     page_counter = 1
@@ -56,40 +92,49 @@ def fetch_links(url):
                     return items_links
 
         page_counter += 1
+
     return items_links
 
 def fetch_data_from_links(links):
     items_data = []
+    max_attempts = 3
     for link in links:
-        try:
-            driver.get(link)
-            time.sleep(5)  # ждем время на загрузку страницы
-            soup = BeautifulSoup(driver.page_source, 'html.parser')
+        attempt = 0
+        while attempt < max_attempts:
+            try:
+                driver.get(link)
+                time.sleep(randint(2,6))  # ждем время на загрузку страницы
+                soup = BeautifulSoup(driver.page_source, 'html.parser')
 
-            name = soup.find('div', class_="product-info-title")
-            price = soup.find('span', class_="sales-block-offer-price__price-final").get_text(strip=True)
-            bonus_percent = soup.find('span', class_="bonus-percent").get_text(strip=True)
-            bonus_amount = soup.find('span', class_="bonus-amount").get_text(strip=True)
+                name = soup.find('h1', class_="pdp-header__title pdp-header__title_only-title").get_text(strip=True)
+                price = soup.find('span', class_="sales-block-offer-price__price-final").get_text(strip=True)
+                bonus_percent = soup.find('span', class_="bonus-percent").get_text(strip=True)
+                bonus_amount = soup.find('span', class_="bonus-amount").get_text(strip=True)
 
-            # Преобразование строки цены в число, убираем пробел и рубли
-            price = float(price[:-2].replace(' ', ''))
+                # Преобразование строки цены в число, убираем пробел и рубли
+                price = float(price[:-2].replace(' ', ''))
 
-            # Преобразование строки количества бонусов и бонусов в процентах в число
-            bonus_amount = int(bonus_amount.replace(' ', ''))
-            bonus_percent = int(bonus_percent.replace('%', ''))
+                # Преобразование строки количества бонусов и бонусов в процентах в число
+                bonus_amount = int(bonus_amount.replace(' ', ''))
+                bonus_percent = int(bonus_percent.replace('%', ''))
 
-            print(f"Название: {name}, Цена: {price}, Бонусы: {bonus_percent}, Количество: {bonus_amount}")
-            items_data.append({"Название": name, "Цена": price, "Бонусы": bonus_percent, "Количество": bonus_amount, "Ссылка": link})
-
-        except Exception as e:
-            print("Error in fetching data from link", link)
+                print(f"Название: {name}, Цена: {price}, Бонусы: {bonus_percent}, Количество: {bonus_amount}")
+                items_data.append({"Название": name, "Цена": price, "Бонусы": bonus_percent, "Количество": bonus_amount,
+                                   "Реальная цена":price - bonus_amount, "Ссылка": link})
+                break
+            except Exception as e:
+                print("Error in fetching data from link", link)
+                attempt += 1
+        if attempt == max_attempts:
+            print(f"Failed to fetch data from link {link} after {max_attempts} attempts")
     return items_data
 
-url = input("Введите ссылку на страницу: ")
+
 links = fetch_links(url)
 data = fetch_data_from_links(links)
 
 # Закрываем веб-драйвер после использования
+save_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt')
 driver.quit()
 # Получаем части URL
 parsed_url = urlparse(url)
