@@ -2,12 +2,23 @@
 Утилита принимает на вход ссылку ( в т.ч. с фильтрами) и разбирает данные 
 в формате: -- Наименование -- Цена -- Процент кешбека -- Количество баллов 
 -- Реальная цена ( Цена - кешбек) -- Ссылка на товар
+<<<<<<< HEAD
 # Требования
 ## Необходимые библиотеки Python
  selenium  bs4  BeautifulSoup  time  datetime  pandas  urllib.parse
 ## Selenium 
 https://github.com/mozilla/geckodriver/releases/
 Скачать релиз на текущую версию ОС. Необходимо при указании пути в driver_path ( например driver_path = r'E:\\geckodriver.exe')
+=======
+# Необходимые библиотеки Python
+selenium
+ bs4 
+ BeautifulSoup 
+ time 
+ datetime 
+ pandas 
+ urllib.parse
+>>>>>>> b91460b922eda670d26ca0517daf714cca7a7983
 
 # Заметки
 ## 1.0.0
