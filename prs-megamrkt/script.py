@@ -7,6 +7,9 @@ import time
 from datetime import datetime
 import pandas as pd  # for Excel export
 from urllib.parse import urlparse
+import openpyxl
+from openpyxl.styles import Font
+from openpyxl.drawing.image import Image
 import os
 
 driver_path = r'E:\\geckodriver.exe'
@@ -70,7 +73,7 @@ def fetch_data(url):
     return items_data
 
 
-url = "https://megamarket.ru/catalog/vstraivaemye-posudomoechnye-mashiny-45-sm/brand-gorenje/"
+url = input("Введите ссылку на страницу: ")
 # fetch_data(url)
 data = fetch_data(url)
 
@@ -86,6 +89,18 @@ needed_parts = path_parts[0:2]
 date_string = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
 filename = "-".join(needed_parts) + date_string + ".xlsx"
 
+# Сохраняем DataFrame в файл Excel
 df = pd.DataFrame(data)
+with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+    df.to_excel(writer, index=False)
 
-df.to_excel(filename, index=False)
+    # Получаем активный лист
+    sheet = writer.sheets['Sheet1']
+
+    # Добавляем гиперссылки в столбце "Ссылка"
+    for i, link in enumerate(df['Ссылка'], start=2):
+        cell = sheet.cell(row=i, column=len(df.columns))
+        cell.value = '=HYPERLINK("%s", "%s")' % (link, link)
+        cell.font = Font(color="0563C1", underline="single")
+
+
