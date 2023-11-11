@@ -19,18 +19,7 @@ user_agents = [
     # добавьте больше вариантов User-Agents в этот список
 ]
 
-driver_path = r'E:\\geckodriver.exe'
-s = Service(driver_path)
-user_agent = user_agents[randint(0, len(user_agents)-1)]
-options = FirefoxOptions()
-
-#Запуск браузера
-driver = webdriver.Firefox(service=s, options=options)
-
-url = input("Введите ссылку на страницу: ")
-options.add_argument(f'user-agent={user_agent}')
-
-# Загружаем куки
+#================================ФУНКЦИИ===========================================
 def load_cookies(driver, location, url=None):
     with open(location, 'r') as cookiesfile:
         cookies = json.load(cookiesfile)
@@ -45,11 +34,7 @@ def save_cookies(driver, location):
         cookies = driver.get_cookies()
         json.dump(cookies, file)
 
-try:  # Пытаемся загрузить куки
-    load_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt', url)
-except:  # Если не удалось загрузить, мы открываем сайт и сохраняем куки
-    driver.get(url)
-    save_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt')
+
 
 def fetch_links(url):
     page_counter = 1
@@ -88,7 +73,7 @@ def fetch_links(url):
                 similar_button = item.find('div', class_='out-of-stock__footer')
 
                 if similar_button and 'Похожие' in similar_button.get_text(strip=True):
-                    print('Обнаружен товар, которого нет в наличии. Завершение работы.')
+                    print('В списке найден товар со статусом "Нет в наличии". Переход к перебору цен.')
                     return items_links
 
         page_counter += 1
@@ -114,50 +99,71 @@ def fetch_data_from_links(links):
                 # Преобразование строки цены в число, убираем пробел и рубли
                 price = float(price[:-2].replace(' ', ''))
 
-                # Преобразование строки количества бонусов и бонусов в процентах в число
+                # Преобразование строки количества бонусов в число
                 bonus_amount = int(bonus_amount.replace(' ', ''))
-                bonus_percent = int(bonus_percent.replace('%', ''))
+                #bonus_percent = int(bonus_percent.replace('%', ''))
 
                 print(f"Название: {name}, Цена: {price}, Бонусы: {bonus_percent}, Количество: {bonus_amount}")
                 items_data.append({"Название": name, "Цена": price, "Бонусы": bonus_percent, "Количество": bonus_amount,
                                    "Реальная цена":price - bonus_amount, "Ссылка": link})
                 break
             except Exception as e:
-                print("Error in fetching data from link", link)
+                print("Товар отсутствует или получена 404 ошибка", link)
                 attempt += 1
         if attempt == max_attempts:
-            print(f"Failed to fetch data from link {link} after {max_attempts} attempts")
+            print(f"Не удалось обработать старницу {link} after {max_attempts} попытки")
     return items_data
 
+#==================================================================================
 
-links = fetch_links(url)
-data = fetch_data_from_links(links)
 
-# Закрываем веб-драйвер после использования
-save_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt')
-driver.quit()
-# Получаем части URL
-parsed_url = urlparse(url)
-# Делим путь на части
-path_parts = parsed_url.path.strip("/").split("/")
-# Берем нужные из них: 'catalog' и 'televizory'
-needed_parts = path_parts[0:2]
-# Соединяем их через '-', добавляем дату и формат файла
-date_string = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
-filename = "-".join(needed_parts) + date_string + ".xlsx"
 
-# Сохраняем DataFrame в файл Excel
-df = pd.DataFrame(data)
-with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-    df.to_excel(writer, index=False)
 
-    # Получаем активный лист
-    sheet = writer.sheets['Sheet1']
+url_list = input("Введите ссылки на страницы через запятую: ").split(',')
+for url in url_list:
+    driver_path = r'E:\\geckodriver.exe'
+    s = Service(driver_path)
+    user_agent = user_agents[randint(0, len(user_agents)-1)]
+    options = FirefoxOptions()
+    driver = webdriver.Firefox(service=s, options=options)
+    options.add_argument(f'user-agent={user_agent}')
+    try:  # Пытаемся загрузить куки
+        load_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt', url)
+    except:  # Если не удалось загрузить, мы открываем сайт и сохраняем куки
+        driver.get(url)
+        save_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt')
+    links = fetch_links(url)
+    data = fetch_data_from_links(links)
 
-    # Добавляем гиперссылки в столбце "Ссылка"
-    for i, link in enumerate(df['Ссылка'], start=2):
-        cell = sheet.cell(row=i, column=len(df.columns))
-        cell.value = '=HYPERLINK("%s", "%s")' % (link, link)
-        cell.font = Font(color="0563C1", underline="single")
+    # Закрываем веб-драйвер после использования
+    save_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt')
+
+    driver.quit()
+    # Получаем части URL
+    parsed_url = urlparse(url)
+    # Делим путь на части
+    path_parts = parsed_url.path.strip("/").split("/")
+    # Берем нужные из них: 'catalog' и 'televizory'
+    needed_parts = path_parts[0:2]
+    # Соединяем их через '-', добавляем дату и формат файла
+    date_string = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
+    filename = "-".join(needed_parts) + date_string + ".xlsx"
+
+    # Сохраняем DataFrame в файл Excel
+    df = pd.DataFrame(data)
+    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+
+        # Получаем активный лист
+        sheet = writer.sheets['Sheet1']
+        # Добавляем гиперссылки в столбце "Ссылка"
+        for i, link in enumerate(df['Ссылка'], start=2):
+            cell = sheet.cell(row=i, column=len(df.columns))
+            cell.value = '=HYPERLINK("%s", "%s")' % (link, link)
+            cell.font = Font(color="0563C1", underline="single")
+
+
+
+
 
 
