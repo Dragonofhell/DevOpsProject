@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.firefox.options import Options
 from bs4 import BeautifulSoup
 import time
 from datetime import datetime
@@ -9,31 +9,31 @@ import pandas as pd  # for Excel export
 from urllib.parse import urlparse
 from openpyxl.styles import Font
 import json
+import random
 from random import randint
+import os
 
 
 #Список агентов
-user_agents = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:92.0) Gecko/20100101 Firefox/92.0",
-    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:15.0) Gecko/20100101 Firefox/15.0.1",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36",
-    # добавьте больше вариантов User-Agents в этот список
-]
+with open("config/user_agent.txt", "r") as file:
+    user_agents = file.read().split("\n")
+    # Удалить пустые строки, если они есть
+    user_agents = [agent for agent in user_agents if agent]
 
 #================================ФУНКЦИИ===========================================
-def load_cookies(driver, location, url=None):
-    with open(location, 'r') as cookiesfile:
-        cookies = json.load(cookiesfile)
-        if url is not None:
-            driver.get(url)
-        for cookie in cookies:
-            driver.add_cookie(cookie)
-
-# Сохраняем куки
-def save_cookies(driver, location):
-    with open(location, 'w') as file:
-        cookies = driver.get_cookies()
-        json.dump(cookies, file)
+#def load_cookies(driver, location, url=None):
+#    with open(location, 'r') as cookiesfile:
+#        cookies = json.load(cookiesfile)
+#        if url is not None:
+#            driver.get(url)
+#        for cookie in cookies:
+#            driver.add_cookie(cookie)
+#
+## Сохраняем куки
+#def save_cookies(driver, location):
+#    with open(location, 'w') as file:
+#        cookies = driver.get_cookies()
+#        json.dump(cookies, file)
 
 
 
@@ -52,24 +52,20 @@ def fetch_links(url):
         driver.get(current_url)
         time.sleep(5)
         soup = BeautifulSoup(driver.page_source, 'html.parser')
-
         items = soup.find_all('div', class_="item-block")
 
         if not items:
-            print(f"Нет товаров на странице {page_counter}. Поиск завершен.")
+            count_item = len(items)
+            print(f"Нет товаров на странице {page_counter}. Поиск завершен.Количество ссылок - {count_item}")
             break
         for item in items:
             try:
                 link_market = item.find('div', class_="item-title").a.get('href')
-
                 # Проверяем есть ли текст с "Самовывоз" для текущего элемента
                 pick_up = item.find('span', {'class': 'catalog-item-delivery__text'})
                 if pick_up and 'Самовывоз' in pick_up.get_text(strip=True):
                     continue
-
-
                 items_links.append('https://megamarket.ru' + link_market)
-
             except Exception as e:
                 print("Error in fetching links")
                 similar_button = item.find('div', class_='out-of-stock__footer')
@@ -80,20 +76,34 @@ def fetch_links(url):
                     count_items = len(items_links)
                     print(f"Количество добавленных ссылок на товар: {count_items}")
                     return items_links
-
         page_counter += 1
-
 
     return items_links
 
 def fetch_data_from_links(links):
     items_data = []
     max_attempts = 3
+    captcha_url = 'https://megamarket.ru/xpvnsulc/'
+    profileff = webdriver.FirefoxProfile()
+    ff_options = Options()
+    ff_options.profile = profileff
+    driver=webdriver.Firefox(options=ff_options)
     for link in links:
         attempt = 0
         while attempt < max_attempts:
             try:
                 driver.get(link)
+                time.sleep(1)
+                current_url = driver.current_url
+                if current_url.startswith(captcha_url):
+                    print('Сработала защита от скрепинга. Подождем и попробуем снова...')
+                    time.sleep(50)
+                    driver.quit()
+                    profileff = webdriver.FirefoxProfile()
+                    ff_options = Options()
+                    ff_options.profile = profileff
+                    driver = webdriver.Firefox(options=ff_options)
+                    continue
                 time.sleep(randint(2,6))  # ждем время на загрузку страницы
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
 
@@ -119,7 +129,6 @@ def fetch_data_from_links(links):
                 time.sleep(1)
                 ###
                 current_url = BeautifulSoup(driver.page_source, 'html.parser')
-                block_ip_text = current_url.find('title')
                 out_of_stock = current_url.find('button', {'class': 'subscribe-button__btn btn sm out-of-stock-block__button'})
 
                 try:
@@ -127,47 +136,33 @@ def fetch_data_from_links(links):
                         print("Товара нет в наличии")
                         attempt=max_attempts
                         break
-                    if 'автоматические' in block_ip_text:
-                        print('Вас заметили. Ждем 20 секунд')
-                        time.sleep(20)
-                    if current_url.find('script', text=lambda t: 'window.location.href' in t):
-                        print('Обнаружен автоматический редирект. Ждем 20 секунд')
-                        time.sleep(20)
-                        continue
                 except Exception as e:
                     print("Что-то пошло не так(возможно 404)")
-
-
         if attempt == max_attempts:
-            print(f"Не удалось обработать старницу {link} after {max_attempts} попытки")
+            print(f"Не удалось обработать страницу {link} after {max_attempts} попытки")
 
     return items_data
-
-#==================================================================================
+#=========================================ЗАКРЫТИЕ БЛОКА ФУНКЦИИ===================================
 
 
 
 #Чтение из файла urls.txt
-with open('urls.txt', 'r') as f:
+with open('config/urls.txt', 'r') as f:
     url_list = f.read().splitlines()
 
 for url in url_list:
-    driver_path = r'E:\\geckodriver.exe'
+    driver_path = r'E:\geckodriver.exe'
     s = Service(driver_path)
-    user_agent = user_agents[randint(0, len(user_agents)-1)]
-    options = FirefoxOptions()
-    options.add_argument(f'user-agent={user_agent}')
-    driver = webdriver.Firefox(service=s, options=options)
-    try:  # Пытаемся загрузить куки
-        load_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt', url)
-    except:  # Если не удалось загрузить, мы открываем сайт и сохраняем куки
-        driver.get(url)
-        save_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt')
+    random_user_agent = random.choice(user_agents)
+    profileff = webdriver.FirefoxProfile()
+    ff_options = Options()
+    ff_options.profile = profileff
+    driver=webdriver.Firefox(options=ff_options)
     links = fetch_links(url)
     data = fetch_data_from_links(links)
 
     # Закрываем веб-драйвер после использования
-    save_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt')
+    save_cookies(driver, r'config/cookies.txt')
 
     driver.quit()
     # Получаем части URL
@@ -192,9 +187,3 @@ for url in url_list:
             cell = sheet.cell(row=i, column=len(df.columns))
             cell.value = '=HYPERLINK("%s", "%s")' % (link, link)
             cell.font = Font(color="0563C1", underline="single")
-
-
-
-
-
-
