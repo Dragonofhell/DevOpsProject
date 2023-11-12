@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
@@ -66,6 +67,7 @@ def fetch_links(url):
                 if pick_up and 'Самовывоз' in pick_up.get_text(strip=True):
                     continue
 
+
                 items_links.append('https://megamarket.ru' + link_market)
 
             except Exception as e:
@@ -73,10 +75,14 @@ def fetch_links(url):
                 similar_button = item.find('div', class_='out-of-stock__footer')
 
                 if similar_button and 'Похожие' in similar_button.get_text(strip=True):
-                    print('В списке найден товар со статусом "Нет в наличии". Переход к перебору цен.')
+                    print(f'В списке найден товар со статусом "Нет в наличии".  Переход к перебору цен.')
+                    #Cчитаем количество ссылок
+                    count_items = len(items_links)
+                    print(f"Количество добавленных ссылок на товар: {count_items}")
                     return items_links
 
         page_counter += 1
+
 
     return items_links
 
@@ -101,7 +107,7 @@ def fetch_data_from_links(links):
 
                 # Преобразование строки количества бонусов в число
                 bonus_amount = int(bonus_amount.replace(' ', ''))
-                #bonus_percent = int(bonus_percent.replace('%', ''))
+                bonus_percent = int(bonus_percent.replace('%', ''))
 
                 print(f"Название: {name}, Цена: {price}, Бонусы: {bonus_percent}, Количество: {bonus_amount}")
                 items_data.append({"Название": name, "Цена": price, "Бонусы": bonus_percent, "Количество": bonus_amount,
@@ -110,23 +116,48 @@ def fetch_data_from_links(links):
             except Exception as e:
                 print("Товар отсутствует или получена 404 ошибка", link)
                 attempt += 1
+                time.sleep(1)
+                ###
+                current_url = BeautifulSoup(driver.page_source, 'html.parser')
+                block_ip_text = current_url.find('title')
+                out_of_stock = current_url.find('button', {'class': 'subscribe-button__btn btn sm out-of-stock-block__button'})
+
+                try:
+                    if "поступлении" in out_of_stock.text:
+                        print("Товара нет в наличии")
+                        attempt=max_attempts
+                        break
+                    if 'автоматические' in block_ip_text:
+                        print('Вас заметили. Ждем 20 секунд')
+                        time.sleep(20)
+                    if current_url.find('script', text=lambda t: 'window.location.href' in t):
+                        print('Обнаружен автоматический редирект. Ждем 20 секунд')
+                        time.sleep(20)
+                        continue
+                except Exception as e:
+                    print("Что-то пошло не так(возможно 404)")
+
+
         if attempt == max_attempts:
             print(f"Не удалось обработать старницу {link} after {max_attempts} попытки")
+
     return items_data
 
 #==================================================================================
 
 
 
+#Чтение из файла urls.txt
+with open('urls.txt', 'r') as f:
+    url_list = f.read().splitlines()
 
-url_list = input("Введите ссылки на страницы через запятую: ").split(',')
 for url in url_list:
     driver_path = r'E:\\geckodriver.exe'
     s = Service(driver_path)
     user_agent = user_agents[randint(0, len(user_agents)-1)]
     options = FirefoxOptions()
-    driver = webdriver.Firefox(service=s, options=options)
     options.add_argument(f'user-agent={user_agent}')
+    driver = webdriver.Firefox(service=s, options=options)
     try:  # Пытаемся загрузить куки
         load_cookies(driver, r'E:\\Programs\\PythonProject\\cookies.txt', url)
     except:  # Если не удалось загрузить, мы открываем сайт и сохраняем куки
