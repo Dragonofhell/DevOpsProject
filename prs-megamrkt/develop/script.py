@@ -16,10 +16,10 @@ import os
 
 
 #Список агентов
-with open("config/user_agent.txt", "r") as file:
-    user_agents = file.read().split("\n")
-    # Удалить пустые строки, если они есть
-    user_agents = [agent for agent in user_agents if agent]
+#with open("config/user_agent.txt", "r") as file:
+#    user_agents = file.read().split("\n")
+#    # Удалить пустые строки, если они есть
+#    user_agents = [agent for agent in user_agents if agent]
 
 #================================ФУНКЦИИ===========================================
 #def load_cookies(driver, location, url=None):
@@ -189,7 +189,7 @@ with open('config/urls.txt', 'r') as f:
 for url in url_list:
     driver_path = r'E:\geckodriver.exe'
     s = Service(driver_path)
-    random_user_agent = random.choice(user_agents)
+    #random_user_agent = random.choice(user_agents)
     profileff = webdriver.FirefoxProfile()
     ff_options = Options()
     ff_options.profile = profileff
