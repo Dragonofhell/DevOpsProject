@@ -125,8 +125,27 @@ def fetch_data_from_links(links):
 
                 name = soup.find('h1', class_="pdp-header__title pdp-header__title_only-title").get_text(strip=True)
                 price = soup.find('span', class_="sales-block-offer-price__price-final").get_text(strip=True)
-                bonus_percent = soup.find('span', class_="bonus-percent").get_text(strip=True)
-                bonus_amount = soup.find('span', class_="bonus-amount").get_text(strip=True)
+                bonus_percent =''
+                bonus_amount=''
+                # Парсим страницу для понимания, какой кешбек брать ( оплата по сберпей, без сперпей или кешбека вообще нет)
+                try:
+                    element = soup.find('div', class_='pdp-cashback-table__money-bonus money-bonus xs money-bonus_loyalty')
+                    if element:
+                        bonus_percent = element.find('span', class_='bonus-percent').text
+                        bonus_amount = element.find('span', class_='bonus-amount').text
+                    else:
+                        element = soup.find('div', class_='money-bonus xs money-bonus_loyalty pdp-cashback-table__money-bonus')
+                        if element:
+                            bonus_percent = element.find('span', class_='bonus-percent').text
+                            bonus_amount = element.find('span', class_='bonus-amount').text
+                        else:
+                            bonus_percent = '0%'
+                            bonus_amount = '0'
+                except Exception as e:
+                    print("Не удалось вычислить кешбек")
+
+                #bonus_percent = soup.find('span', class_="bonus-percent").get_text(strip=True)
+                #bonus_amount = soup.find('span', class_="bonus-amount").get_text(strip=True)
 
                 # Преобразование строки цены в число, убираем пробел и рубли
                 price = float(price[:-2].replace(' ', ''))
@@ -187,8 +206,8 @@ with open('config/urls.txt', 'r') as f:
     url_list = f.read().splitlines()
 
 for url in url_list:
-    driver_path = r'E:\geckodriver.exe'
-    s = Service(driver_path)
+    #driver_path = r'E:\geckodriver.exe'
+    #s = Service(driver_path)
     #random_user_agent = random.choice(user_agents)
     profileff = webdriver.FirefoxProfile()
     ff_options = Options()

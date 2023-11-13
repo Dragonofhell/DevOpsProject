@@ -84,3 +84,9 @@ https://github.com/mozilla/geckodriver/releases/
 - Убраны лишние функции
 - добавлены примеры файлов в папки config
 
+## 1.0.6
+- Переработан подход поиска кешбека в зависимости от вида страницы
+Параметр | Описание 
+money-bonus xs money-bonus_loyalty pdp-cashback-table__money-bonus|страница с 1 видом кешбека
+pdp-cashback-table__money-bonus money-bonus xs money-bonus_loyalty | страница с 2 видами кешбека ( Sberpay и без)
+
