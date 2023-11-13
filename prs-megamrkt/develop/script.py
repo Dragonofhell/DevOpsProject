@@ -11,6 +11,7 @@ from openpyxl.styles import Font
 import json
 import random
 from random import randint
+import requests
 import os
 
 
@@ -34,9 +35,23 @@ with open("config/user_agent.txt", "r") as file:
 #    with open(location, 'w') as file:
 #        cookies = driver.get_cookies()
 #        json.dump(cookies, file)
+#Загрузка config.json для телеграм
+def load_config():
+    with open('config/config.json', 'r') as f:
+        return json.load(f)
 
-
-
+config = load_config()
+#Объявляем переменные для использования в коде
+tokenid_top = config.get('tokenid_top')
+tokenid = config.get('tokenid')
+result_dir = config.get('result_dir')
+chat_id = str(config.get('chat_id'))
+min_bonus_amount = config.get('min_bonus_amount')
+best_bonus_amount = config.get('best_bonus_amount')
+# Если в файле config.json значение tokenid_top пустое либо отсутствует, используем значение tokenid
+if not tokenid_top:
+    tokenid_top = tokenid
+##################################################################################################
 def fetch_links(url):
     page_counter = 1
     items_links = []
@@ -80,6 +95,7 @@ def fetch_links(url):
 
     return items_links
 
+
 def fetch_data_from_links(links):
     items_data = []
     max_attempts = 3
@@ -122,6 +138,26 @@ def fetch_data_from_links(links):
                 print(f"Название: {name}, Цена: {price}, Бонусы: {bonus_percent}, Количество: {bonus_amount}")
                 items_data.append({"Название": name, "Цена": price, "Бонусы": bonus_percent, "Количество": bonus_amount,
                                    "Реальная цена":price - bonus_amount, "Ссылка": link})
+                try:
+                    if int(bonus_percent) >= min_bonus_amount:
+                        if int(bonus_percent) >= best_bonus_amount:
+                            token = tokenid_top
+                            message = f"Название: {name}, Бонусы: {bonus_percent}, Ссылка: {link}"
+                            send_text = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat_id + '&text=' + message
+                            response = requests.get(send_text)
+                            # Простая проверка, успешно ли было отправлено сообщение:
+                            if response.status_code != 200:
+                                raise ValueError(f"Request to telegram returned an error {response.status_code}, the response is:\n{response.text}")
+                        else:
+                            token = tokenid
+                            message = f"Название: {name}, Бонусы: {bonus_percent} %, Ссылка: {link}"
+                            send_text = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat_id + '&text=' + message
+                            response = requests.get(send_text)
+                            # Простая проверка, успешно ли было отправлено сообщение:
+                            if response.status_code != 200:
+                                raise ValueError(f"Request to telegram returned an error {response.status_code}, the response is:\n{response.text}")
+                except Exception as e:
+                    print(f"Не удалось отправить в телегу. Ошибка: {str(e)}")
                 break
             except Exception as e:
                 print("Товар отсутствует или получена 404 ошибка", link)
@@ -140,7 +176,7 @@ def fetch_data_from_links(links):
                     print("Что-то пошло не так(возможно 404)")
         if attempt == max_attempts:
             print(f"Не удалось обработать страницу {link} after {max_attempts} попытки")
-
+    driver.quit()
     return items_data
 #=========================================ЗАКРЫТИЕ БЛОКА ФУНКЦИИ===================================
 
@@ -159,10 +195,11 @@ for url in url_list:
     ff_options.profile = profileff
     driver=webdriver.Firefox(options=ff_options)
     links = fetch_links(url)
+    driver.quit()
     data = fetch_data_from_links(links)
 
     # Закрываем веб-драйвер после использования
-    save_cookies(driver, r'config/cookies.txt')
+    #save_cookies(driver, r'config/cookies.txt')
 
     driver.quit()
     # Получаем части URL
@@ -173,7 +210,7 @@ for url in url_list:
     needed_parts = path_parts[0:2]
     # Соединяем их через '-', добавляем дату и формат файла
     date_string = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
-    filename = "-".join(needed_parts) + date_string + ".xlsx"
+    filename = result_dir + "-".join(needed_parts) + date_string + ".xlsx"
 
     # Сохраняем DataFrame в файл Excel
     df = pd.DataFrame(data)
