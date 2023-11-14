@@ -46,6 +46,7 @@ def fetch_links(url):
                 current_url = url + f'/page-{page_counter}/'
 
         driver.get(current_url)
+        #load page
         time.sleep(10)
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         items = soup.find_all('div', class_="item-block")
