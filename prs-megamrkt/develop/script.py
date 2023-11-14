@@ -14,33 +14,13 @@ from random import randint
 import requests
 import os
 
-
-#Список агентов
-#with open("config/user_agent.txt", "r") as file:
-#    user_agents = file.read().split("\n")
-#    # Удалить пустые строки, если они есть
-#    user_agents = [agent for agent in user_agents if agent]
-
 #================================ФУНКЦИИ===========================================
-#def load_cookies(driver, location, url=None):
-#    with open(location, 'r') as cookiesfile:
-#        cookies = json.load(cookiesfile)
-#        if url is not None:
-#            driver.get(url)
-#        for cookie in cookies:
-#            driver.add_cookie(cookie)
-#
-## Сохраняем куки
-#def save_cookies(driver, location):
-#    with open(location, 'w') as file:
-#        cookies = driver.get_cookies()
-#        json.dump(cookies, file)
-#Загрузка config.json для телеграм
+#Загрузка config.json
 def load_config():
     with open('config/config.json', 'r') as f:
         return json.load(f)
-
 config = load_config()
+
 #Объявляем переменные для использования в коде
 tokenid_top = config.get('tokenid_top')
 tokenid = config.get('tokenid')
@@ -48,18 +28,19 @@ result_dir = config.get('result_dir')
 chat_id = str(config.get('chat_id'))
 min_bonus_amount = config.get('min_bonus_amount')
 best_bonus_amount = config.get('best_bonus_amount')
+
 # Если в файле config.json значение tokenid_top пустое либо отсутствует, используем значение tokenid
 if not tokenid_top:
     tokenid_top = tokenid
-##################################################################################################
+
 def fetch_links(url):
     page_counter = 1
     items_links = []
-    while True:  # Loop through each page
+    while True:
         if page_counter == 1:
             current_url = url
         else:
-            if 'filter' in url:  # check if 'filter' is in the url
+            if 'filter' in url:
                 current_url = url.split('#')[0] + f'/page-{page_counter}/' + '#' + url.split('#')[1]  # add 'page-X/' before '#'
             else:
                 current_url = url + f'/page-{page_counter}/'
@@ -76,7 +57,7 @@ def fetch_links(url):
         for item in items:
             try:
                 link_market = item.find('div', class_="item-title").a.get('href')
-                # Проверяем есть ли текст с "Самовывоз" для текущего элемента
+                # Не добавляем товары с типом доставки "Самовывоз"
                 pick_up = item.find('span', {'class': 'catalog-item-delivery__text'})
                 if pick_up and 'Самовывоз' in pick_up.get_text(strip=True):
                     continue
@@ -143,13 +124,8 @@ def fetch_data_from_links(links):
                             bonus_amount = '0'
                 except Exception as e:
                     print("Не удалось вычислить кешбек")
-
-                #bonus_percent = soup.find('span', class_="bonus-percent").get_text(strip=True)
-                #bonus_amount = soup.find('span', class_="bonus-amount").get_text(strip=True)
-
                 # Преобразование строки цены в число, убираем пробел и рубли
                 price = float(price[:-2].replace(' ', ''))
-
                 # Преобразование строки количества бонусов в число
                 bonus_amount = int(bonus_amount.replace(' ', ''))
                 bonus_percent = int(bonus_percent.replace('%', ''))
@@ -182,7 +158,6 @@ def fetch_data_from_links(links):
                 print("Товар отсутствует или получена 404 ошибка", link)
                 attempt += 1
                 time.sleep(1)
-                ###
                 current_url = BeautifulSoup(driver.page_source, 'html.parser')
                 out_of_stock = current_url.find('button', {'class': 'subscribe-button__btn btn sm out-of-stock-block__button'})
 
@@ -206,9 +181,6 @@ with open('config/urls.txt', 'r') as f:
     url_list = f.read().splitlines()
 
 for url in url_list:
-    #driver_path = r'E:\geckodriver.exe'
-    #s = Service(driver_path)
-    #random_user_agent = random.choice(user_agents)
     profileff = webdriver.FirefoxProfile()
     ff_options = Options()
     ff_options.profile = profileff
@@ -218,8 +190,6 @@ for url in url_list:
     data = fetch_data_from_links(links)
 
     # Закрываем веб-драйвер после использования
-    #save_cookies(driver, r'config/cookies.txt')
-
     driver.quit()
     # Получаем части URL
     parsed_url = urlparse(url)
