@@ -28,6 +28,7 @@ result_dir = config.get('result_dir')
 chat_id = str(config.get('chat_id'))
 min_bonus_amount = config.get('min_bonus_amount')
 best_bonus_amount = config.get('best_bonus_amount')
+telegram_status = config.get('telegram_enable')
 
 # Если в файле config.json значение tokenid_top пустое либо отсутствует, используем значение tokenid
 if not tokenid_top:
@@ -135,7 +136,7 @@ def fetch_data_from_links(links):
                 items_data.append({"Название": name, "Цена": price, "Бонусы": bonus_percent, "Количество": bonus_amount,
                                    "Реальная цена":price - bonus_amount, "Ссылка": link})
                 try:
-                    if int(bonus_percent) >= min_bonus_amount:
+                    if int(bonus_percent) >= min_bonus_amount and telegram_status == True:
                         if int(bonus_percent) >= best_bonus_amount:
                             token = tokenid_top
                             message = f"Название: {name}, Бонусы: {bonus_percent}, Ссылка: {link}"
