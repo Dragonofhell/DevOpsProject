@@ -13,6 +13,7 @@ import random
 from random import randint
 import requests
 import os
+from tqdm import tqdm
 
 #================================ФУНКЦИИ===========================================
 #Загрузка config.json!
@@ -76,10 +77,17 @@ def fetch_links(url):
                     return items_links
         page_counter += 1
 
+        # Получаем части URL
+        parsed_url = urlparse(url)
+        # Делим путь на части
+        path_parts = parsed_url.path.strip("/").split("/")
+        # Берем нужную часть, например, 'catalog' и 'inklinometry'
+        category = path_parts[1] if len(path_parts) >= 2 else None
+
     return items_links
 
 
-def fetch_data_from_links(links):
+def fetch_data_from_links(links,category):
     items_data = []
     max_attempts = 3
     captcha_url = 'https://megamarket.ru/xpvnsulc/'
@@ -87,7 +95,8 @@ def fetch_data_from_links(links):
     ff_options = Options()
     ff_options.profile = profileff
     driver=webdriver.Firefox(options=ff_options)
-    for link in links:
+    print(f'Начинаем обработку категории {category}')
+    for link in tqdm(links, desc=f"Processing links", unit="link"):
         attempt = 0
         while attempt < max_attempts:
             try:
@@ -179,6 +188,9 @@ def fetch_data_from_links(links):
 
 
 #Чтение из файла urls.txt
+# ... (your existing code)
+
+#Чтение из файла urls.txt
 with open('config/urls.txt', 'r') as f:
     url_list = f.read().splitlines()
 
@@ -187,12 +199,7 @@ for url in url_list:
     ff_options = Options()
     ff_options.profile = profileff
     driver=webdriver.Firefox(options=ff_options)
-    links = fetch_links(url)
-    driver.quit()
-    data = fetch_data_from_links(links)
 
-    # Закрываем веб-драйвер после использования
-    driver.quit()
     # Получаем части URL
     parsed_url = urlparse(url)
     # Делим путь на части
@@ -202,6 +209,12 @@ for url in url_list:
     # Соединяем их через '-', добавляем дату и формат файла
     date_string = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
     filename = result_dir + "-".join(needed_parts) + date_string + ".xlsx"
+    links = fetch_links(url)
+    driver.quit()
+
+    # Moved the category definition inside the loop
+    category = path_parts[1] if len(path_parts) >= 2 else None
+    data = fetch_data_from_links(links, category=category)
 
     # Сохраняем DataFrame в файл Excel
     df = pd.DataFrame(data)
