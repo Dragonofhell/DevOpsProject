@@ -15,7 +15,7 @@ import requests
 import os
 
 #================================ФУНКЦИИ===========================================
-#Загрузка config.json
+#Загрузка config.json!
 def load_config():
     with open('config/config.json', 'r') as f:
         return json.load(f)
