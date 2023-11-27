@@ -42,10 +42,13 @@ def fetch_links(url):
         if page_counter == 1:
             current_url = url
         else:
-            if 'filter' in url:
+            if 'promo-page' in url:
+                if 'filter' in url:
+                    current_url = url + f'&page={page_counter}/'
+                else:
+                    current_url = url + f'/#?page={page_counter}/'
+            elif 'filter' in url:
                 current_url = url.split('#')[0] + f'/page-{page_counter}/' + '#' + url.split('#')[1]  # add 'page-X/' before '#'
-            elif 'promo-page' in url:
-                current_url = url + f'/#?page={page_counter}/'
             else:
                 current_url = url + f'/page-{page_counter}/'
 
