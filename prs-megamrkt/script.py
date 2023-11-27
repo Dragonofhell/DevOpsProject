@@ -44,6 +44,8 @@ def fetch_links(url):
         else:
             if 'filter' in url:
                 current_url = url.split('#')[0] + f'/page-{page_counter}/' + '#' + url.split('#')[1]  # add 'page-X/' before '#'
+            elif 'promo-page' in url:
+                current_url = url + f'/#?page={page_counter}/'
             else:
                 current_url = url + f'/page-{page_counter}/'
 
