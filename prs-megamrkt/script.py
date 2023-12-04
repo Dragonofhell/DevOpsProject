@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 from selenium import webdriver
-from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.firefox.options import Options
+#from selenium.webdriver.firefox.service import Service
+#from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import time
 from datetime import datetime
 import pandas as pd  # for Excel export
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse, urlsplit, urlunsplit
 from openpyxl.styles import Font
 import json
 import random
@@ -14,6 +15,9 @@ from random import randint
 import requests
 import os
 from tqdm import tqdm
+
+
+
 
 #================================ФУНКЦИИ===========================================
 #Загрузка config.json!
@@ -38,23 +42,41 @@ if not tokenid_top:
 def fetch_links(url):
     page_counter = 1
     items_links = []
+    if 'filter' in url:
+        index_of_last_slash = url.rfind('/')
+        if index_of_last_slash != -1:
+            modified_url = url[:index_of_last_slash]
+            print(modified_url)
+        else:
+            print("Ссылка не содержит слешей.")
+        #driver.get(modified_url)
     while True:
         if page_counter == 1:
             current_url = url
+            url_wo_filter = modified_url
         else:
             if 'promo-page' in url:
                 if 'filter' in url:
                     current_url = url + f'&page={page_counter}/'
+                    url_wo_filter = modified_url+ f'/page-{page_counter}/'
                 else:
                     current_url = url + f'/#?page={page_counter}/'
+                    url_wo_filter = modified_url+ f'/page-{page_counter}/'
             elif 'filter' in url:
-                current_url = url.split('#')[0] + f'/page-{page_counter}/' + '#' + url.split('#')[1]  # add 'page-X/' before '#'
+                current_url = url.split('#')[0] + f'page-{page_counter}/' + '#' + url.split('#')[1]  # add 'page-X/' before '#'
+                url_wo_filter = modified_url+ f'/page-{page_counter}/'
             else:
                 current_url = url + f'/page-{page_counter}/'
+                url_wo_filter = modified_url+ f'/page-{page_counter}/'
 
+        #Открываем ссылку , которая состоит из категории и номера страницы.
+        #Необходимо для корректной работы при парсинге ссылок с фильтрами
+        driver.get(url_wo_filter)
+        time.sleep(2)
+        #Открываем ссылку с фильтрами
         driver.get(current_url)
-        #load page
-        time.sleep(10)
+        time.sleep(7)
+        #Парсим страницу
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         items = soup.find_all('div', class_="item-block")
 
@@ -96,10 +118,7 @@ def fetch_data_from_links(links,category):
     items_data = []
     max_attempts = 3
     captcha_url = 'https://megamarket.ru/xpvnsulc/'
-    profileff = webdriver.FirefoxProfile()
-    ff_options = Options()
-    ff_options.profile = profileff
-    driver=webdriver.Firefox(options=ff_options)
+    driver=webdriver.Chrome()
     print(f'Начинаем обработку категории {category}')
     for link in tqdm(links, desc=f"Processing links", unit="link"):
         attempt = 0
@@ -112,10 +131,7 @@ def fetch_data_from_links(links,category):
                     print('Сработала защита от скрепинга. Подождем и попробуем снова...')
                     time.sleep(50)
                     driver.quit()
-                    profileff = webdriver.FirefoxProfile()
-                    ff_options = Options()
-                    ff_options.profile = profileff
-                    driver = webdriver.Firefox(options=ff_options)
+                    driver = webdriver.Chrome()
                     continue
                 time.sleep(randint(2,6))  # ждем время на загрузку страницы
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -200,10 +216,7 @@ with open('config/urls.txt', 'r') as f:
     url_list = f.read().splitlines()
 
 for url in url_list:
-    profileff = webdriver.FirefoxProfile()
-    ff_options = Options()
-    ff_options.profile = profileff
-    driver=webdriver.Firefox(options=ff_options)
+    driver = webdriver.Chrome()
 
     # Получаем части URL
     parsed_url = urlparse(url)
