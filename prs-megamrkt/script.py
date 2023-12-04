@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from selenium import webdriver
-#from selenium.webdriver.firefox.service import Service
-#from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.options import Options
+#from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import time
 from datetime import datetime
@@ -42,6 +42,9 @@ if not tokenid_top:
 def fetch_links(url):
     page_counter = 1
     items_links = []
+    modified_url = url
+    url_wo_filter = ''
+
     if 'filter' in url:
         index_of_last_slash = url.rfind('/')
         if index_of_last_slash != -1:
@@ -49,7 +52,7 @@ def fetch_links(url):
             print(modified_url)
         else:
             print("Ссылка не содержит слешей.")
-        #driver.get(modified_url)
+
     while True:
         if page_counter == 1:
             current_url = url
@@ -71,8 +74,9 @@ def fetch_links(url):
 
         #Открываем ссылку , которая состоит из категории и номера страницы.
         #Необходимо для корректной работы при парсинге ссылок с фильтрами
-        driver.get(url_wo_filter)
-        time.sleep(2)
+        if 'filter' in current_url:
+            driver.get(url_wo_filter)
+            time.sleep(2)
         #Открываем ссылку с фильтрами
         driver.get(current_url)
         time.sleep(7)
@@ -118,7 +122,7 @@ def fetch_data_from_links(links,category):
     items_data = []
     max_attempts = 3
     captcha_url = 'https://megamarket.ru/xpvnsulc/'
-    driver=webdriver.Chrome()
+    driver=webdriver.Firefox()
     print(f'Начинаем обработку категории {category}')
     for link in tqdm(links, desc=f"Processing links", unit="link"):
         attempt = 0
@@ -131,7 +135,7 @@ def fetch_data_from_links(links,category):
                     print('Сработала защита от скрепинга. Подождем и попробуем снова...')
                     time.sleep(50)
                     driver.quit()
-                    driver = webdriver.Chrome()
+                    driver = webdriver.Firefox()
                     continue
                 time.sleep(randint(2,6))  # ждем время на загрузку страницы
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -216,7 +220,7 @@ with open('config/urls.txt', 'r') as f:
     url_list = f.read().splitlines()
 
 for url in url_list:
-    driver = webdriver.Chrome()
+    driver = webdriver.Firefox()
 
     # Получаем части URL
     parsed_url = urlparse(url)
