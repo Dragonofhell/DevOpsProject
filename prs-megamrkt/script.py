@@ -199,10 +199,15 @@ def fetch_data_from_links(links,category):
                 attempt += 1
                 time.sleep(1)
                 current_url = BeautifulSoup(driver.page_source, 'html.parser')
-                out_of_stock = current_url.find('button', {'class': 'subscribe-button__btn btn sm out-of-stock-block__button'})
+                try:
+                    out_of_stock = current_url.find('button', {'class':
+                    'subscribe-button__btn-redesign c-button c-button_theme_special-gray c-button_size_medium c-button_fullwidth c-button_text-with-icon'
+                                                           })
+                except Exception:
+                    None
 
                 try:
-                    if "поступлении" in out_of_stock.text:
+                    if "когда" in out_of_stock.text:
                         print("Товара нет в наличии")
                         attempt=max_attempts
                         break
