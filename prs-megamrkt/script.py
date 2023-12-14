@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from selenium import webdriver
-from selenium.webdriver.firefox.service import Service
-from selenium.webdriver.firefox.options import Options
-#from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from bs4 import BeautifulSoup
 import time
 from datetime import datetime
@@ -42,6 +43,7 @@ if not tokenid_top:
 def fetch_links(url):
     page_counter = 1
     items_links = []
+    current_url = url
     modified_url = url
     url_wo_filter = ''
 
@@ -53,33 +55,19 @@ def fetch_links(url):
         else:
             print("Ссылка не содержит слешей.")
 
-    while True:
         if page_counter == 1:
             current_url = url
             url_wo_filter = modified_url
-        else:
-            if 'promo-page' in url:
-                if 'filter' in url:
-                    current_url = url + f'&page={page_counter}/'
-                    url_wo_filter = modified_url+ f'/page-{page_counter}/'
-                else:
-                    current_url = url + f'/#?page={page_counter}/'
-                    url_wo_filter = modified_url+ f'/page-{page_counter}/'
-            elif 'filter' in url:
-                current_url = url.split('#')[0] + f'page-{page_counter}/' + '#' + url.split('#')[1]  # add 'page-X/' before '#'
-                url_wo_filter = modified_url+ f'/page-{page_counter}/'
-            else:
-                current_url = url + f'/page-{page_counter}/'
-                url_wo_filter = modified_url+ f'/page-{page_counter}/'
-
         #Открываем ссылку , которая состоит из категории и номера страницы.
         #Необходимо для корректной работы при парсинге ссылок с фильтрами
         if 'filter' in current_url:
             driver.get(url_wo_filter)
             time.sleep(2)
-        #Открываем ссылку с фильтрами
-        driver.get(current_url)
-        time.sleep(7)
+    #Открываем ссылку с фильтрами или без фильтра ( если парсим категорию полностью)
+    driver.get(current_url)
+    time.sleep(5)
+
+    while True:
         #Парсим страницу
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         items = soup.find_all('div', class_="item-block")
@@ -115,7 +103,23 @@ def fetch_links(url):
         # Берем нужную часть, например, 'catalog' и 'inklinometry'
         category = path_parts[1] if len(path_parts) >= 2 else None
 
+        try:
+            time.sleep(3)
+            next_page_button = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'a[rel="next"]'))
+            )
+            next_page_button.click()
+            time.sleep(2)  # Ждем загрузки следующей страницы
+        except TimeoutException as te:
+
+            print(f"TimeoutException: {te}")
+            print(f"Кнопка 'next' не найдена. Завершение поиска. Количество товаров")
+            return items_links  # Выйти из функции
+
+
     return items_links
+
+
 
 
 def fetch_data_from_links(links,category):
@@ -236,6 +240,8 @@ for url in url_list:
 
     # Moved the category definition inside the loop
     category = path_parts[1] if len(path_parts) >= 2 else None
+    count_links = len(links)
+    print(f" Количество товаров {count_links}")
     data = fetch_data_from_links(links, category=category)
 
     # Сохраняем DataFrame в файл Excel
